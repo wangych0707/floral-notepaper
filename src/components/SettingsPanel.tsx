@@ -340,7 +340,10 @@ export function SettingsPanel({ config, onChange, onChooseNotesDir, onClose }: S
           {config.backgroundImagePath && (
             <button
               type="button"
-              onClick={() => setConfigValue("backgroundImagePath", "")}
+              onClick={() => {
+                void invoke("remove_background_image").catch(() => {});
+                setConfigValue("backgroundImagePath", "");
+              }}
               className="text-[11px] text-ink-ghost hover:text-red-400 transition-colors cursor-pointer"
             >
               {t("settings.background.clear", { defaultValue: "清除背景图片" })}

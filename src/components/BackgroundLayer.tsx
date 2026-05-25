@@ -1,12 +1,12 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { AppConfig } from "../features/settings/types";
 
 interface BackgroundLayerProps {
   config: AppConfig | null;
 }
 
-export function BackgroundLayer({ config }: BackgroundLayerProps) {
+export const BackgroundLayer = memo(function BackgroundLayer({ config }: BackgroundLayerProps) {
   const rawPath = config?.backgroundImagePath?.trim() ?? "";
   const convertedUrl = useMemo(() => (rawPath ? convertFileSrc(rawPath) : ""), [rawPath]);
 
@@ -53,4 +53,4 @@ export function BackgroundLayer({ config }: BackgroundLayerProps) {
       <div className="absolute inset-0 bg-cloud" style={{ opacity: dim }} />
     </div>
   );
-}
+});

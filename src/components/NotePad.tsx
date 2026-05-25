@@ -241,7 +241,13 @@ export function NotePad({
         tileRenderMarkdown?: boolean;
       } & Partial<AppConfig>
     >("config-changed", (event) => {
-      setSurfaceConfig((current) => (current ? { ...current, ...event.payload } : current));
+      setSurfaceConfig((current) => {
+        if (!current) return current;
+        const defined = Object.fromEntries(
+          Object.entries(event.payload).filter(([, v]) => v !== undefined),
+        );
+        return { ...current, ...defined };
+      });
       const mode = event.payload.tileColorMode ?? tileColorMode;
       const raw = event.payload.tileColor ?? tileColorRaw;
       setTileColorMode(mode);

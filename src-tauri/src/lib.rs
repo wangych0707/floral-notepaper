@@ -146,6 +146,8 @@ fn config_get() -> Result<AppConfig, AppError> {
     default_store()?.load_config()
 }
 
+const ALLOWED_BG_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp"];
+
 #[tauri::command]
 fn copy_background_image(app: AppHandle, source_path: String) -> Result<String, AppError> {
     let source = PathBuf::from(source_path.trim());
@@ -153,6 +155,19 @@ fn copy_background_image(app: AppHandle, source_path: String) -> Result<String, 
         return Err(AppError {
             code: "invalidSource".into(),
             message: "background image source not found".into(),
+            details: Default::default(),
+        });
+    }
+
+    let ext = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|v| v.to_ascii_lowercase())
+        .unwrap_or_default();
+    if !ALLOWED_BG_EXTENSIONS.contains(&ext.as_str()) {
+        return Err(AppError {
+            code: "invalidFormat".into(),
+            message: format!("unsupported image format: {ext}"),
             details: Default::default(),
         });
     }
@@ -165,11 +180,14 @@ fn copy_background_image(app: AppHandle, source_path: String) -> Result<String, 
     let dir = app_data.join("backgrounds");
     fs::create_dir_all(&dir)?;
 
-    let ext = source
-        .extension()
-        .and_then(|value| value.to_str())
-        .filter(|value| !value.is_empty())
-        .unwrap_or("png");
+    let old_config = default_store()?.load_config()?;
+    if !old_config.background_image_path.is_empty() {
+        let old_path = PathBuf::from(&old_config.background_image_path);
+        if old_path.starts_with(&dir) && old_path.is_file() {
+            let _ = fs::remove_file(&old_path);
+        }
+    }
+
     let dest = dir.join(format!("bg-{}.{}", uuid::Uuid::new_v4(), ext));
     fs::copy(&source, &dest)?;
 
@@ -178,6 +196,25 @@ fn copy_background_image(app: AppHandle, source_path: String) -> Result<String, 
         message: "invalid destination path".into(),
         details: Default::default(),
     })
+}
+
+#[tauri::command]
+fn remove_background_image(app: AppHandle) -> Result<(), AppError> {
+    let config = default_store()?.load_config()?;
+    if config.background_image_path.is_empty() {
+        return Ok(());
+    }
+    let app_data = app.path().app_data_dir().map_err(|error| AppError {
+        code: "path".into(),
+        message: error.to_string(),
+        details: Default::default(),
+    })?;
+    let dir = app_data.join("backgrounds");
+    let old_path = PathBuf::from(&config.background_image_path);
+    if old_path.starts_with(&dir) && old_path.is_file() {
+        let _ = fs::remove_file(&old_path);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -284,6 +321,7 @@ pub fn run() {
             categories_delete,
             config_get,
             copy_background_image,
+            remove_background_image,
             config_save,
             global_shortcut_check,
             open_notepad_window,
